@@ -52,7 +52,9 @@
 
 (mf/defc object-svg
   {::mf/wrap [mf/memo]}
-  [{:keys [objects object-id zoom render-texts?] :or {zoom 1} :as props}]
+  [{:keys [objects object-id zoom render-texts? render-page-style?]
+    :or {zoom 1}
+    :as props}]
   (let [object   (get objects object-id)
         frame-id (if (= :frame (:type object))
                    (:id object)
@@ -100,8 +102,9 @@
         render-texts? (and render-texts? (d/seek (comp nil? :position-data) text-shapes))]
 
     (mf/with-effect [width height]
-      (dom/set-page-style {:size (str (mth/ceil width) "px "
-                                      (mth/ceil height) "px")}))
+      (when render-page-style?
+        (dom/set-page-style {:size (str (mth/ceil width) "px "
+                                        (mth/ceil height) "px")})))
 
     [:& (mf/provider embed/context) {:value false}
      [:svg {:id "screenshot"

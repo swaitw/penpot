@@ -68,19 +68,12 @@
             (rx/take 1)
             (rx/map #(ws/initialize)))))))
 
-
-(def essential-only?
-  (let [href (.-href ^js glob/location)]
-    (str/includes? href "essential=t")))
-
 (defn ^:export init
   []
-  (when-not essential-only?
-    (worker/init!)
-    (sentry/init!)
-    (i18n/init! cf/translations)
-    (theme/init! cf/themes))
-
+  (worker/init!)
+  (sentry/init!)
+  (i18n/init! cf/translations)
+  (theme/init! cf/themes)
   (init-ui)
   (st/emit! (initialize)))
 

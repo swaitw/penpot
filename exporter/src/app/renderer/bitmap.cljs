@@ -25,10 +25,12 @@
                    (assoc :path "/")
                    (assoc :fragment path))]
     (bw/exec!
-     #js {:screen #js {:width bw/default-viewport-width
+     #js {
+          :screen #js {:width bw/default-viewport-width
                        :height bw/default-viewport-height}
           :viewport #js {:width bw/default-viewport-width
                          :height bw/default-viewport-height}
+          ;; :viewport nil
           :locale "en-US"
           :storageState #js {:cookies (bw/create-cookies uri {:token token})}
           :deviceScaleFactor scale
@@ -40,9 +42,11 @@
         (p/let [node (bw/select page "#screenshot")]
           (bw/wait-for node)
           (bw/eval! page (js* "() => document.body.style.background = 'transparent'"))
+          ;; (bw/eval! page (js* "() => document.body.style.overflow = 'scroll'"))
+          ;; (bw/eval! page (js* "() => document.body.querySelector('#app') = 'scroll'"))
           (bw/sleep page 2000) ; the good old fix with sleep
           (case type
-            :png  (bw/screenshot node {:omit-background? true :type type})
+            :png  (bw/screenshot node {:omit-background? true :type type :full-page? true})
             :jpeg (bw/screenshot node {:omit-background? false :type type}))))))))
 
 (s/def ::name ::us/string)
