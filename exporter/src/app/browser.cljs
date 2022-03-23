@@ -117,21 +117,23 @@
 
 (defn init
   []
-  (l/info :msg "initializing browser pool")
-  (let [opts #js {:max (cf/get :exporter-browser-pool-max 5)
-                  :min (cf/get :exporter-browser-pool-min 0)
+  (let [opts #js {:max (cf/get :browser-pool-max 5)
+                  :min (cf/get :browser-pool-min 0)
                   :testOnBorrow true
                   :evictionRunIntervalMillis 5000
                   :numTestsPerEvictionRun 5
-                  :acquireTimeoutMillis 120000 ; 2min
+                  ;; :acquireTimeoutMillis 120000 ; 2min
+                  :acquireTimeoutMillis 10000 ; 10 s
                   :idleTimeoutMillis 10000}]
+
+    (l/info :hint "initializing browser pool" :opts opts)
     (reset! pool (gp/createPool browser-pool-factory opts))
     (p/resolved nil)))
 
 (defn stop
   []
   (when-let [pool (deref pool)]
-    (l/info :msg "finalizing browser pool")
+    (l/info :hint "finalizing browser pool")
     (p/do!
      (.drain ^js pool)
      (.clear ^js pool))))

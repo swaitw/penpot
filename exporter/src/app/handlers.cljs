@@ -21,7 +21,7 @@
    [promesa.core :as p]
    [reitit.core :as r]))
 
-(l/set-level! :info)
+(l/set-level! :debug)
 
 (defn on-error
   [error exchange]
@@ -77,7 +77,7 @@
 
 (defn validate-uri!
   [uri]
-  (let [white-list (cf/get :exporter-domain-whitelist #{})
+  (let [white-list (cf/get :domain-white-list #{})
         default    (cf/get :public-uri)]
     (when-not (or (contains? white-list (u/get-domain uri))
                   (= (u/get-domain default) (u/get-domain uri)))
@@ -88,6 +88,7 @@
 (defn handler
   [{:keys [:request/params] :as exchange}]
   (let [{:keys [cmd uri] :as params} (us/conform ::params params)]
+    (l/debug :hint "process-request" :cmd cmd)
     (some-> uri validate-uri!)
     (case cmd
       :get-resource  (resources/handler exchange)
