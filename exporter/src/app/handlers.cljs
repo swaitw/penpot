@@ -52,8 +52,10 @@
           (assoc :response/headers {"content-type" "application/transit+json"}))
 
       :else
-      (do
-        (l/error :msg "Unexpected error" :cause error)
+      (let [data {:type :server-error
+                  :hint (ex-message error)
+                  :data data}]
+        (l/error :hint "unexpected internal error" :cause error)
         (-> exchange
             (assoc :response/status 500)
             (assoc :response/body (t/encode data))

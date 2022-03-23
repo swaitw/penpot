@@ -7,8 +7,10 @@
 (ns app.browser
   (:require
    ["generic-pool" :as gp]
+   ["generic-pool/lib/errors" :as gpe]
    ["playwright" :as pw]
    [app.common.data :as d]
+   [app.common.exceptions :as ex]
    [app.common.logging :as l]
    [app.common.uuid :as uuid]
    [app.config :as cf]
@@ -16,6 +18,8 @@
    [promesa.core :as p]))
 
 (l/set-level! :trace)
+
+(def TimeoutError gpe/TimeoutError)
 
 ;; --- BROWSER API
 
@@ -142,6 +146,15 @@
   [p]
   (p/handle p (constantly nil)))
 
+(defn- translate-browser-errors
+  [cause]
+  (if (instance? TimeoutError cause)
+    (ex/raise :type :internal
+              :code :timeout
+              :hint (ex-message cause)
+              :cause cause)
+    (p/rejected cause)))
+
 (defn exec!
   [config handle]
   (letfn [(handle-browser [browser]
@@ -168,5 +181,4 @@
     (when-let [pool (deref pool)]
       (-> (p/do! (.acquire ^js pool))
           (p/then (partial on-acquire pool))
-          (p/catch (fn [cause]
-                     (p/rejected cause)))))))
+          (p/catch translate-browser-errors)))))
