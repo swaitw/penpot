@@ -12,9 +12,9 @@
    [app.common.uuid :as uuid]
    [app.config :as cf]
    [app.db :as db]
-   [app.rpc.mutations.files :as m.files]
-   [app.rpc.queries.profile :as profile]
    [app.http.debug.export :as dbg-export]
+   [app.rpc.mutations.files :refer [create-file]]
+   [app.rpc.queries.profile :as profile]
    [app.util.blob :as blob]
    [app.util.template :as tmpl]
    [app.util.time :as dt]
@@ -52,26 +52,11 @@
                 :body    (-> (io/resource "templates/debug.tmpl")
                              (tmpl/render {}))))
 
-
 (def sql:retrieve-range-of-changes
   "select revn, changes from file_change where file_id=? and revn >= ? and revn <= ? order by revn")
 
 (def sql:retrieve-single-change
   "select revn, changes, data from file_change where file_id=? and revn = ?")
-
-(defn prepare-response
-  [{:keys [params] :as request} body]
-  (when-not body
-    (ex/raise :type :not-found
-              :code :enpty-data
-              :hint "empty response"))
-
-  (cond-> (yrs/response :status  200
-                        :body    body
-                        :headers {"content-type" "application/transit+json"})
-    (contains? params :download)
-    (update :headers assoc "content-disposition" "attachment")))
-
 
 (defn- retrieve-file-data
   [{:keys [pool]} {:keys [params] :as request}]
@@ -81,6 +66,7 @@
 
   (let [file-id (some-> (get-in request [:params :file-id]) uuid/uuid)
         revn    (some-> (get-in request [:params :revn]) d/parse-integer)]
+
     (when-not file-id
       (ex/raise :type :validation
                 :code :missing-arguments))
@@ -88,10 +74,20 @@
     (let [data (if (integer? revn)
                  (some-> (db/exec-one! pool [sql:retrieve-single-change file-id revn]) :data)
                  (some-> (db/get-by-id pool :file file-id) :data))]
-      (if (contains? params :download)
-        (-> (prepare-response request data)
-            (update :headers assoc "content-type" "application/octet-stream"))
-        (prepare-response request (some-> data blob/decode))))))
+
+      (when-not data
+        (ex/raise :type :not-found
+                  :code :enpty-data
+                  :hint "empty response"))
+
+      (let [headers  (if (contains? params :download)
+                       {"content-type" "application/transit+json"}
+                       {"content-type" "application/octet-stream"
+                        "content-disposition" "attachment"})
+            body     (cond-> data
+                       (not (contains? params :download))
+                       (blob/decode))]
+        (yrs/response 200 body headers)))))
 
 (defn- upload-file-data
   [{:keys [pool]} {:keys [profile-id params] :as request}]
@@ -100,11 +96,11 @@
 
     (if (and data project-id)
       (let [fname (str "imported-file-" (dt/now))]
-        (m.files/create-file pool {:id (uuid/next)
-                                   :name fname
-                                   :project-id project-id
-                                   :profile-id profile-id
-                                   :data data})
+        (create-file pool {:id (uuid/next)
+                           :name fname
+                           :project-id project-id
+                           :profile-id profile-id
+                           :data data})
         (yrs/response 200 "OK"))
       (yrs/response 500 "ERROR"))))
 
@@ -132,20 +128,39 @@
 
     (cond
       (d/num-string? revn)
-      (let [item (db/exec-one! pool [sql:retrieve-single-change file-id (d/parse-integer revn)])]
-        (prepare-response request (some-> item :changes blob/decode vec)))
+      (let [item (db/exec-one! pool [sql:retrieve-single-change file-id (d/parse-integer revn)])
+            data (some-> item :changes blob/decode vec)]
+
+        (when-not data
+          (ex/raise :type :not-found
+                    :code :enpty-data
+                    :hint "empty response"))
+
+        (yrs/response
+         :status  200
+         :headers {"content-type" "application/transit+json"}
+         :body    data))
 
       (str/includes? revn ":")
       (let [[start end] (->> (str/split revn #":")
                              (map str/trim)
                              (map d/parse-integer))
-            items       (db/exec! pool [sql:retrieve-range-of-changes file-id start end])]
-        (prepare-response request
-                          (some->> items
-                                   (map :changes)
-                                   (map blob/decode)
-                                   (mapcat identity)
-                                   (vec))))
+            items       (db/exec! pool [sql:retrieve-range-of-changes file-id start end])
+            data        (some->> (seq items)
+                                 (map :changes)
+                                 (map blob/decode)
+                                 (mapcat identity)
+                                 (vec))]
+        (when-not data
+          (ex/raise :type :not-found
+                    :code :enpty-data
+                    :hint "empty response"))
+
+        (yrs/response
+         :status  200
+         :headers {"content-type" "application/transit+json"}
+         :body    data))
+
       :else
       (ex/raise :type :validation :code :invalid-arguments))))
 
@@ -248,5 +263,5 @@
    :retrieve-error-list (wrap-async cfg retrieve-error-list)
    :file-data (wrap-async cfg file-data)
    :changelog (wrap-async cfg changelog)
-   :export (wrap-async cfg dbg-export/handler cfg)
+   :export (wrap-async cfg dbg-export/export-handler)
    :import (wrap-async cfg dbg-export/import-handler)})
