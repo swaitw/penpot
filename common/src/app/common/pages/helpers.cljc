@@ -146,13 +146,45 @@
   function is executed in the render hot path."
   [objects]
   (let [lookup (d/getf objects)
+        xform  (comp (remove #(= uuid/zero %))
+                     (keep lookup)
+                     (filter frame-shape?)
+                     (map :id))]
+    (->> (keys objects)
+         (into [] xform))))
+
+(defn get-frames
+  "Retrieves all frame objects as vector. It is not implemented in
+  function of `get-immediate-children` for performance reasons. This
+  function is executed in the render hot path."
+  [objects]
+  (let [lookup (d/getf objects)
+        xform  (comp (remove #(= uuid/zero %))
+                     (keep lookup)
+                     (filter frame-shape?))]
+    (->> (keys objects)
+         (into [] xform))))
+
+(defn get-nested-frames
+  [objects frame-id]
+  (into #{}
+        (comp (filter frame-shape?)
+              (map :id))
+        (get-children objects frame-id)))
+
+(defn get-root-frames-ids
+  "Retrieves all frame objects as vector. It is not implemented in
+  function of `get-immediate-children` for performance reasons. This
+  function is executed in the render hot path."
+  [objects]
+  (let [lookup (d/getf objects)
         xform  (comp (keep lookup)
                      (filter frame-shape?)
                      (map :id))]
     (->> (:shapes (lookup uuid/zero))
          (into [] xform))))
 
-(defn get-frames
+(defn get-root-frames
   "Retrieves all frame objects as vector. It is not implemented in
   function of `get-immediate-children` for performance reasons. This
   function is executed in the render hot path."

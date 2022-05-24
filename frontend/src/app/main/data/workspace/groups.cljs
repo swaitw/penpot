@@ -21,7 +21,6 @@
   [objects selected]
   (->> selected
        (map #(get objects %))
-       (filter #(not= :frame (:type %)))
        (map #(assoc % ::index (cph/get-position-on-parent objects (:id %))))
        (sort-by ::index)))
 
@@ -65,6 +64,7 @@
 
 (defn prepare-create-group
   [it objects page-id shapes base-name keep-name?]
+  (prn "prepare-create-group")
   (let [frame-id  (:frame-id (first shapes))
         parent-id (:parent-id (first shapes))
         gname     (if (and keep-name?
@@ -134,6 +134,7 @@
   (ptk/reify ::group-selected
     ptk/WatchEvent
     (watch [it state _]
+      (prn "??group-selected")
       (let [page-id  (:current-page-id state)
             objects  (wsh/lookup-page-objects state page-id)
             selected (wsh/lookup-selected state)

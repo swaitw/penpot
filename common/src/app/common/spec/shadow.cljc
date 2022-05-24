@@ -36,9 +36,11 @@
                    ::id]))
 
 (s/def ::shadow-props
-  (s/keys :req-un [:internal.shadow/id
+  ;; We need this to be `opt-un` so it's backwards compatible
+  (s/keys :opt-un [::shadow-color
+                   :internal.color/color]
+          :req-un [:internal.shadow/id
                    :internal.shadow/style
-                   ::shadow-color
                    :internal.shadow/offset-x
                    :internal.shadow/offset-y
                    :internal.shadow/blur

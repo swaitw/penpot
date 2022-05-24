@@ -6,6 +6,8 @@
 
 (ns app.main.data.workspace
   (:require
+   [app.main.data.workspace.indices :as dwidx]
+   
    [app.common.attrs :as attrs]
    [app.common.data :as d]
    [app.common.data.macros :as dm]
@@ -127,7 +129,8 @@
                               team-id (dm/get-in bundle [:project :team-id])]
                           (rx/merge
                            (rx/of (dwn/initialize team-id file-id)
-                                  (dwp/initialize-file-persistence file-id))
+                                  (dwp/initialize-file-persistence file-id)
+                                  (dwidx/start-indexing file-id))
 
                            (->> stream
                                 (rx/filter #(= ::dwc/index-initialized %))
@@ -190,6 +193,7 @@
     (watch [_ _ _]
       (rx/merge
        (rx/of (dwn/finalize file-id))
+       (rx/of (dwidx/stop-indexing file-id))
        (->> (rx/of ::dwp/finalize)
             (rx/observe-on :async))))))
 
