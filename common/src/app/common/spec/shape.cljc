@@ -52,8 +52,8 @@
 (s/def ::fill-color-ref-id (s/nilable uuid?))
 
 (s/def ::hide-fill-on-export boolean?)
-(s/def ::clip-content boolean?)
-(s/def ::show-viewer boolean?)
+(s/def ::show-content boolean?)
+(s/def ::hide-in-viewer boolean?)
 
 (s/def ::file-thumbnail boolean?)
 (s/def ::masked-group? boolean?)
@@ -305,8 +305,8 @@
   (s/and ::shape-attrs
          (s/keys :opt-un [::file-thumbnail
                           ::hide-fill-on-export
-                          ::clip-content
-                          ::show-viewer])))
+                          ::show-content
+                          ::hide-in-viewer])))
 
 (s/def ::shape
   (s/and (s/multi-spec shape-spec :type)

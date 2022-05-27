@@ -139,6 +139,7 @@
   (log/debug :msg "commit-changes"
              :js/redo-changes redo-changes
              :js/undo-changes undo-changes)
+  (.log js/console "??" (clj->js redo-changes))
   (let [error  (volatile! nil)
         page-id (:current-page-id @st/state)
         frames (changed-frames redo-changes (wsh/lookup-page-objects @st/state))]
